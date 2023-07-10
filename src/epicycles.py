@@ -30,20 +30,20 @@ class Epicycles:
     https://thecodingtrain.com/CodingChallenges/130.3-fourier-transform-drawing.html
     """
 
-    def __init__(self, fourier_data, plot_size):
+    def __init__(self, colors, fourier_data, plot_size):
         """
         Constructor
         :param fourier_data Array of FourierDatum
         :param plot_size The [x, y] plot size to use
         """
 
-        # self.colors = ["#e83034", "#0386b3", "#58b0bf"]
-        self.colors = {
-            "line" : "#c9d6df",
-            "circles" : "#0386b3",
-            "vectors" : "#58b0bf",
-            "background" : "#15110c"
-        }
+        self.colors = colors
+        # self.colors = {
+        #     "line" : "#c9d6df",
+        #     "circles" : "#0386b3",
+        #     "vectors" : "#58b0bf",
+        #     "background" : "#15110c"
+        # }
         # self.colors = ["#c9d6df", "#0386b3", "#58b0bf"]
         n = len(fourier_data)
         self.phase = 0
@@ -58,7 +58,7 @@ class Epicycles:
         self.fig.patch.set_facecolor(self.colors["background"])
 
         # line plot for x/y drawing_data
-        self.drawing_line, = self.ax.plot([], [], lw=2, color=self.colors["line"])
+        self.drawing_line, = self.ax.plot([], [], lw=2, color=self.colors["line"]) # lw = 2
         self.epicycles = np.zeros(n, dtype=[('position', float, 2), ('size', float, 1)])
         # self.epicycles = np.zeros(n, dtype=[('position', float, (2,)), ('size', float, (1,))])
         # for lines from epicycle center to next epicycle
@@ -148,7 +148,7 @@ class Epicycles:
         for i in range(0, len(optimized_path_points), indices_step_size):
             z.append(complex(optimized_path_points[i][1], optimized_path_points[i][0]))
 
-        z.append(z[0])
+        # z.append(z[0])
 
         return z
 
@@ -190,18 +190,18 @@ class Epicycles:
 
         if self.phase > 2 * np.pi:
             # freeze at completion for 3 seconds and then restart the drawing
-            time.sleep(3)
-            self.phase = 0
-            self.x_drawing_positions = []
-            self.y_drawing_positions = []
+            # time.sleep(3)
+            self.phase = (2 * np.pi / len(self.fourier_data)) * (len(self.fourier_data)-1) # = 0
+            # self.x_drawing_positions = self.x_drawing_positions[0:-1] # = []
+            # self.y_drawing_positions = self.y_drawing_positions[0:-1] # = []
 
         return self.drawing_line, self.epicycle_lines, self.epicycle_scatter,
 
-    def run(self):
+    def run(self, name, dpi, fps):
         """
         Runs the Epicycle animation
         """
-        a = animation.FuncAnimation(self.fig, self._draw, frames=len(self.fourier_data), interval=20)
+        a = animation.FuncAnimation(self.fig, self._draw, frames=len(self.fourier_data) + 50, interval=20) # interval = 20
 
         # Set up formatting for the movie files
         # Writer = animation.writers['ffmpeg']
@@ -209,6 +209,8 @@ class Epicycles:
 
         # a.save('animation.mp4', writer = writer)
 
-        a.save('./data/out/animation.mp4', writer = 'ffmpeg', fps=60, dpi=100)
+        a.save(f'./data/out/{name}.mp4', writer = 'ffmpeg', fps=fps, dpi=dpi)
+
+        print("Done saving video")
         # a.save('animation.gif', writer='imagemagick')
-        plt.show()
+        # plt.show()
