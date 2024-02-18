@@ -30,14 +30,17 @@ class Epicycles:
     https://thecodingtrain.com/CodingChallenges/130.3-fourier-transform-drawing.html
     """
 
-    def __init__(self, colors, fourier_data, plot_size):
+    def __init__(self, colors, parameters, fourier_data, plot_size):
         """
         Constructor
         :param fourier_data Array of FourierDatum
         :param plot_size The [x, y] plot size to use
         """
 
+        self.back = False
+
         self.colors = colors
+        self.parameters = parameters
         # self.colors = {
         #     "line" : "#c9d6df",
         #     "circles" : "#0386b3",
@@ -51,24 +54,24 @@ class Epicycles:
         # holds coordinates of drawing at the end of the last epicycle
         self.x_drawing_positions = []
         self.y_drawing_positions = []
-        self.fig = plt.figure()
-        self.ax = plt.axes(xlim=(0, plot_size[0]), ylim=(0, plot_size[1]))
+        self.fig = plt.figure(figsize=(9, 16)) # figsize=(9, 16)
+        self.ax = plt.axes(xlim=(0-200, plot_size[0]), ylim=(0-200, plot_size[1]))
 
         self.ax.set_aspect('equal', adjustable='box')
         self.fig.patch.set_facecolor(self.colors["background"])
 
         # line plot for x/y drawing_data
-        self.drawing_line, = self.ax.plot([], [], lw=2, color=self.colors["line"]) # lw = 2
+        self.drawing_line, = self.ax.plot([], [], lw=2 * self.parameters["lw_mult"], color=self.colors["line"]) # lw = 2
         self.epicycles = np.zeros(n, dtype=[('position', float, 2), ('size', float, 1)])
         # self.epicycles = np.zeros(n, dtype=[('position', float, (2,)), ('size', float, (1,))])
         # for lines from epicycle center to next epicycle
-        self.epicycle_lines = [Line2D([], [], color=self.colors["vectors"], lw=1, alpha=.5) for count in range(n)]
+        self.epicycle_lines = [Line2D([], [], color=self.colors["vectors"], lw=1 * self.parameters["lw_mult"], alpha=.5) for count in range(n)]
         # scatter plot for epicycles
         self.epicycle_scatter = self.ax.scatter(
             self.epicycles['position'][:, 0],
             self.epicycles['position'][:, 1],
             s=self.epicycles['size'],
-            lw=1,
+            lw=1 * self.parameters["lw_mult"],
             edgecolors=self.colors["circles"],
             facecolors='none',
             alpha=.5)
@@ -172,7 +175,7 @@ class Epicycles:
             x += radius * np.cos(fourier_datum.freq * self.phase + fourier_datum.phase)
             y += radius * np.sin(fourier_datum.freq * self.phase + fourier_datum.phase)
             self.epicycles['position'][i] = [prev_x, prev_y]
-            self.epicycles['size'][i] = radius * 2
+            self.epicycles['size'][i] = radius * 2 * self.parameters["radius_mult"]
             self.epicycle_lines[i].set_data([prev_x, x], [prev_y, y])
             i += 1
 
@@ -181,14 +184,26 @@ class Epicycles:
         self.epicycle_scatter.set_offsets(self.epicycles['position'])
 
         # Draw the output image outline at the last epicycle position
-        self.x_drawing_positions.append(x)
-        self.y_drawing_positions.append(y)
+        if(not self.back):
+            self.x_drawing_positions.append(x)
+            self.y_drawing_positions.append(y)
+        elif(len(self.x_drawing_positions) > 0 and len(self.y_drawing_positions) > 0):
+            self.x_drawing_positions.pop()
+            self.y_drawing_positions.pop()
         self.drawing_line.set_data(self.x_drawing_positions, self.y_drawing_positions)
 
         phase_delta = 2 * np.pi / len(self.fourier_data)
-        self.phase += phase_delta
+
+        if(not self.back):
+            self.phase += phase_delta
+        else:
+            self.phase -= phase_delta
+
+        if self.phase < 0:
+            self.phase = 0
 
         if self.phase > 2 * np.pi:
+            self.back = True
             # freeze at completion for 3 seconds and then restart the drawing
             # time.sleep(3)
             self.phase = (2 * np.pi / len(self.fourier_data)) * (len(self.fourier_data)-1) # = 0
@@ -201,7 +216,7 @@ class Epicycles:
         """
         Runs the Epicycle animation
         """
-        a = animation.FuncAnimation(self.fig, self._draw, frames=len(self.fourier_data) + 50, interval=20) # interval = 20
+        a = animation.FuncAnimation(self.fig, self._draw, frames=len(self.fourier_data)*2, interval=20) # interval = 20
 
         # Set up formatting for the movie files
         # Writer = animation.writers['ffmpeg']
@@ -209,7 +224,11 @@ class Epicycles:
 
         # a.save('animation.mp4', writer = writer)
 
-        a.save(f'./data/out/{name}.mp4', writer = 'ffmpeg', fps=fps, dpi=dpi)
+        # Writer = animation.writers['ffmpeg']
+        # writer = Writer(fps=fps, metadata=dict(artist='Me'), bitrate=1800)
+
+        a.save(f'./data/out/{name}.mp4', writer = 'ffmpeg', fps=fps, dpi=dpi, savefig_kwargs=dict(facecolor=self.colors["background"]))
+        # a.save(f'./data/out/{name}.mp4', writer = writer, fps=fps, dpi=dpi, savefig_kwargs=dict(facecolor=self.colors["background"]))
 
         print("Done saving video")
         # a.save('animation.gif', writer='imagemagick')
